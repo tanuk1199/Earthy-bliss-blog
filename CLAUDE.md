@@ -3,6 +3,13 @@
 ## Overview
 A standalone Next.js blog for Earthy Bliss Co. that lives separately from the main Shopify store. Hosts SEO-driven baking content (recipes, techniques, guides) with embedded product recommendations that link back to `earthyblissco.com`.
 
+## Deployment
+- **Live URL**: https://blog.earthyblissco.com
+- **Repo**: https://github.com/tanuk1199/Earthy-bliss-blog
+- **Branch**: `main` (Vercel auto-deploys)
+- **Domain**: `blog.earthyblissco.com` (subdomain on Vercel)
+- No environment variables needed — all product data is baked in at build time
+
 ## Tech Stack
 - **Next.js 16** + React 19 + TypeScript
 - **Tailwind CSS v4** + shadcn/ui components
@@ -32,7 +39,7 @@ blog-post-template/
 │       ├── how-to-knead-dough/page.tsx
 │       ├── how-to-score-bread/page.tsx
 │       ├── where-to-proof-bread-dough/page.tsx
-│       └── holiday-cookie-decorating/page.tsx  # ⚠ Exists but NOT in registry
+│       └── holiday-cookie-decorating/page.tsx  # Exists but NOT in registry
 ├── components/blog/
 │   ├── Navbar.tsx              # Sticky nav — Latest, Recipes, Techniques, Shop (external)
 │   ├── Footer.tsx              # Matches main store footer (newsletter, 2-col links, social)
@@ -41,17 +48,17 @@ blog-post-template/
 │   ├── ArticleBody.tsx         # Renders HTML article content
 │   ├── ArticleMeta.tsx         # Category badge, title, author, date, read time
 │   ├── BannerImage.tsx         # Full-width hero image
-│   ├── RelatedArticles.tsx     # 3-card related posts grid
+│   ├── RelatedArticles.tsx     # 3-card related posts grid (slug-based, from registry)
 │   ├── SocialShare.tsx         # Share buttons (clipboard, Twitter, Facebook, Pinterest)
 │   ├── VideoEmbed.tsx          # YouTube embed wrapper
 │   └── RecipeCard.tsx / RecipeSteps.tsx / RecipeVideo.tsx / TipsCallout.tsx
 ├── lib/
 │   ├── blog-registry.ts        # Central post index (10 entries) — getAllPosts(), getRelatedArticles()
-│   ├── blog-types.ts           # TypeScript interfaces (BlogPost, ProductCallout, etc.)
+│   ├── blog-types.ts           # TypeScript interfaces (BlogPost, RelatedArticle — orphaned, kept for reference)
 │   ├── product-catalog.ts      # Real Shopify products + per-slug recommendations
-│   ├── mock-blog-data.tsx      # ⚠ Legacy mock data — only used by [slug] catch-all
 │   └── utils.ts                # cn() helper
-└── public/                     # Placeholder icons (v0 defaults, replaced by app/icon.svg)
+└── public/
+    └── images/blog/            # Custom post images (8 of 10 posts have local PNGs)
 ```
 
 ## Navigation
@@ -61,6 +68,21 @@ blog-post-template/
 | Recipes | `/blog?category=recipes` | Filtered grid of recipe posts only |
 | Techniques | `/blog?category=techniques` | Filtered grid of technique + guide posts |
 | Shop | `https://earthyblissco.com` | External link (opens new tab) |
+
+## Data Architecture
+
+### Single Source of Truth: `blog-registry.ts`
+All post metadata lives here — titles, categories, images, dates, read times, keywords. Components consume the registry:
+- **Blog index** (`blog/page.tsx`) — `getAllPosts()`, `getPostsByCategory()`
+- **Related articles** (`RelatedArticles.tsx`) — `getRelatedArticles(slug)` (smart matching: same category first, then same type, then others)
+- **Sitemap** (`sitemap.ts`) — auto-generates from registry entries
+
+### Centralized Components (slug-based)
+Both `ProductCallout` and `RelatedArticles` accept a `slug` prop and resolve data internally:
+- `<ProductCallout slug="perfect-homemade-bun" />` → looks up `product-catalog.ts`
+- `<RelatedArticles slug="perfect-homemade-bun" />` → looks up `blog-registry.ts`
+
+No hardcoded data arrays in individual post pages.
 
 ## Product Integration
 
@@ -97,6 +119,12 @@ blog-post-template/
 | `non-slip-silicone-baking-mat` | Non-Slip Silicone Baking Mat | $20 |
 | `petal-perfection-aprons` | Petal Perfection Kitchen Apron | $18 |
 
+## Images
+- **8 of 10 posts** have custom local images at `public/images/blog/{slug}.png`
+- These are used as banner images, OG images, Twitter cards, JSON-LD schema, AND registry thumbnails
+- **2 posts still use Unsplash**: `perfect-homemade-bun`, `homemade-pizza-dough`
+- Registry images flow through to related articles cards automatically
+
 ## Footer
 Matches the main Shopify store's `ebc-footer.liquid`:
 1. **Newsletter** — "Join the Earthy Bliss community" + email input
@@ -114,19 +142,35 @@ Matches the main Shopify store's `ebc-footer.liquid`:
 | `--accent` | `#BD2B2D` | Heritage Red (CTA only) |
 | `--muted-foreground` | `#3E3E3E` | Charcoal Hearth |
 
+## Post Publication Dates
+Posts are staggered for a natural publishing cadence (most recent first):
+| Post | Date |
+|------|------|
+| pan-de-mallorca-recipe | 2026-02-07 |
+| easy-focaccia-recipe | 2026-02-03 |
+| egg-wash-bread-guide | 2026-01-28 |
+| fluffy-homemade-biscuits | 2026-01-22 |
+| how-to-score-bread | 2026-01-15 |
+| banana-bread-recipe | 2026-01-08 |
+| where-to-proof-bread-dough | 2025-12-18 |
+| how-to-knead-dough | 2025-12-10 |
+| perfect-homemade-bun | 2025-12-02 |
+| homemade-pizza-dough | 2025-11-25 |
+
 ## Known Issues / TODO
 
 ### Resolved
 - ~~`[slug]/page.tsx` mock data~~ — now returns 404 for unknown slugs
 - ~~`mock-blog-data.tsx`~~ — deleted, no references remain
 - ~~`holiday-cookie-decorating` mock dependency~~ — self-contained, no mock import
+- ~~Blog registry images are Unsplash~~ — 8 of 10 replaced with local custom PNGs
+- ~~Hardcoded `relatedArticles` arrays~~ — consolidated to use `getRelatedArticles()` from registry
+- ~~Banner images are Unsplash~~ — 8 of 10 replaced with local custom PNGs (matching registry)
 
 ### Remaining
-1. **Blog registry images are Unsplash** — the 10 post thumbnail images in `blog-registry.ts` are from `images.unsplash.com`. These display on the blog index and related articles. Need real photography or at minimum stable hosted images.
-2. **Individual post `relatedArticles` arrays are hardcoded** — each post defines its own related articles with Unsplash images, separate from the `getRelatedArticles()` helper in blog-registry.ts. Should be consolidated to use the registry helper.
-3. **`holiday-cookie-decorating/`** — page exists but isn't in `blog-registry.ts`, so it's invisible from the blog index.
-4. **Banner images in individual posts** — each post has its own Unsplash banner image hardcoded inline.
-5. **Public folder** has leftover v0 placeholder icons (`placeholder-logo.png`, `placeholder.svg`, etc.) — can be cleaned up.
+1. **2 posts still need custom images**: `perfect-homemade-bun` and `homemade-pizza-dough` still use Unsplash URLs in both registry and post pages
+2. **`holiday-cookie-decorating/`** — page exists but isn't in `blog-registry.ts`, so it's invisible from the blog index
+3. **Public folder** has leftover v0 placeholder icons (`placeholder-logo.png`, `placeholder.svg`, etc.) — can be cleaned up
 
 ## Shopify API Access
 Credentials in `Stores/EarthyBlissCo.com/.env`:
